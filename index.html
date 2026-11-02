@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>書き初め名前お手本アプリ</title>
+
+    <!-- Google Fonts: Yuji Syuku & Noto Serif JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Yuji+Syuku&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Dynamic Custom Font Tag -->
+    <style id="customFont"></style>
+
+    <style>
+        @font-face {
+            font-family: 'Yuji Syuku Standard';
+            src: url('https://fonts.gstatic.com/s/yujisyuku/v1/vEFT2_dp1sg_we5-7b9a895s.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        :root {
+            /* 240mm fixed distance on A4 297mm height */
+            /* (297mm - 240mm)/2 = 28.5mm top margin */
+            /* 1mm = 3.77952756px at 96 DPI */
+            --a4-w-px: 793.7px;
+            --a4-h-px: 1122.5px;
+            --dot-top-px: 107.72px; /* 28.5mm */
+            --dot-dist-px: 907.09px; /* 240.0mm */
+            
+            /* 280mm centered over 240mm midpoint (148.5mm - 140mm = 8.5mm top) */
+            --center-280-top-px: 32.12px; /* 8.5mm */
+            --center-280-dist-px: 1058.27px; /* 280.0mm */
+        }
+
+        body {
+            font-family: 'Noto Serif JP', 'Inter', serif;
+            background-color: #f0f2f5;
+            color: #1f2937;
+        }
+
+        /* 16:9 Aspect Ratio Outer Frame Wrapper */
+        .app-16-9-wrapper {
+            max-width: 1650px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .app-16-9-frame {
+            aspect-ratio: 16 / 9;
+            height: auto;
+            max-height: calc(100vh - 75px);
+        }
+
+        @media (max-width: 1023px) {
+            .app-16-9-frame {
+                aspect-ratio: auto;
+                max-height: none;
+            }
+        }
+
+        /* Exact A4 Sheet Page (793.7px x 1122.5px) */
+        .a4-page {
+            width: 793.7px;
+            height: 1122.5px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: row;
+            padding: 0px 1px;
+            box-sizing: border-box;
+            page-break-after: always;
+            transform-origin: top center;
+            transition: transform 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        /* Tanzaku Strip (70mm wide x 3 = 210mm) */
+        .tanzaku {
+            font-family: 'Ferutopen', 'Yuji Syuku Standard', 'Yuji Syuku', serif;
+            width: 264px;
+            height: 100%;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            padding: 0 10px;
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            border-right: 1px dashed #e5e7eb;
+        }
+
+        .tanzaku:last-child {
+            border-right: none;
+        }
+
+        /* Red Cut Dots */
+        .kiritori-dot {
+            position: absolute;
+            font-family: sans-serif;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ef4444;
+            writing-mode: horizontal-tb;
+            user-select: none;
+            z-index: 10;
+            line-height: 1;
+            width: 12px;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .dot-top {
+            top: var(--dot-top-px);
+            transform: translateY(-50%);
+        }
+
+        .dot-bottom {
+            top: calc(var(--dot-top-px) + var(--dot-dist-px));
+            transform: translateY(-50%);
+        }
+
+        .dot-left {
+            left: -6px;
+        }
+
+        /* Horizontal Cut Guide Lines */
+        .cut-guide-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 0;
+            border-top: 1.5px dashed rgba(239, 68, 68, 0.85);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .cut-guide-line-top {
+            top: var(--dot-top-px);
+        }
+
+        .cut-guide-line-bottom {
+            top: calc(var(--dot-top-px) + var(--dot-dist-px));
+        }
+
+        /* Center Vertical Blue Line */
+        .center-line {
+            position: absolute;
+            width: 1.5px;
+            height: 100%;
+            background-color: rgba(37, 99, 235, 0.4);
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Name Container */
+        .name-container {
+            position: absolute;
+            width: calc(100% - 20px);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            box-sizing: border-box;
+            overflow: visible;
+            /* 縦書きフォントのアセンダ余白を相殺し、1文字目を上部赤線ぴったりに配置 (-15px + 3.5mm) */
+            transform: translateY(calc(-15px + 3.5mm));
+        }
+
+        /* 1-7 chars: contained in 240mm with space-between justification */
+        .name-container.contained-240mm {
+            top: var(--dot-top-px);
+            height: var(--dot-dist-px);
+            justify-content: space-between;
+        }
+
+        /* 8+ chars: centered 280mm height (overflowing 20mm top and 20mm bottom) */
+        .name-container.centered-280mm {
+            top: var(--center-280-top-px);
+            height: var(--center-280-dist-px);
+            justify-content: space-between;
+        }
+
+        /* Character Spans */
+        .name-span {
+            font-size: 90pt;
+            letter-spacing: 0px;
+            line-height: 1.0;
+            margin: 0;
+            padding: 0;
+            flex-grow: 0;
+            flex-shrink: 0;
+            color: #111827;
+            display: inline-block;
+        }
+
+        .name-space {
+            display: inline-block;
+            flex-grow: 0;
+            flex-shrink: 0;
+            visibility: hidden;
+        }
+
+        /* Right Preview Container */
+        #previewArea {
+            margin: 0 auto;
+            padding: 16px;
+            background-color: #d1d5db;
+            border-radius: 8px;
+            overflow-y: auto !important;
+            max-height: 100%;
+            cursor: zoom-in;
+            transform-origin: top center;
+            min-height: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #previewArea.scaled-down .a4-page {
+            transform: scale(var(--scale-out, 0.5));
+            margin-bottom: calc(1122.5px * (var(--scale-out, 0.5) - 1));
+        }
+
+        #previewArea.zoomed-in {
+            cursor: zoom-out;
+        }
+
+        #previewArea.zoomed-in .a4-page {
+            transform: scale(1.0);
+            margin-bottom: 24px;
+        }
+
+        /* Loader Overlay */
+        #loader {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(2px);
+            z-index: 9999;
+        }
+
+        .spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 48px;
+            height: 48px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1656BB;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Loader -->
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Header (50% Burgundy Gradient) -->
+    <header style="background: linear-gradient(135deg, #800000 0%, rgba(128, 0, 0, 0.5) 100%);" class="text-white shadow-md py-2.5 px-6">
+        <div class="max-w-7xl mx-auto flex items-center space-x-3">
+            <i class="fa-solid fa-brush text-lg text-amber-200"></i>
+            <h1 class="text-base font-bold tracking-wide">書き初め名前お手本アプリ</h1>
+        </div>
+    </header>
+
+    <!-- Main Content Container (16:9 Screen Layout) -->
+    <main class="app-16-9-wrapper p-3 flex-grow w-full">
+        <div id="appFrame" class="app-16-9-frame grid grid-cols-1 lg:grid-cols-12 gap-3 w-full bg-gray-200/60 p-2.5 rounded-xl border border-gray-300/80 shadow-sm">
+
+            <!-- Left Control Panel (Single Column Vertical Layout - Non-Scrolling) -->
+            <div class="lg:col-span-3 bg-white p-3.5 rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between h-full overflow-hidden">
+                
+                <div class="flex flex-col gap-2.5 flex-grow overflow-hidden">
+                    
+                    <!-- 1. Wordを読み込む Button (#1656BB) -->
+                    <input type="file" id="wordFileInput" accept=".docx" class="hidden">
+                    <button id="loadWordButton" class="w-full text-white py-3.5 px-3 rounded font-bold transition duration-200 shadow-sm text-xs flex items-center justify-center gap-2 min-h-[48px]" style="background-color: #1656BB;" onmouseover="this.style.backgroundColor='#1a66d3'" onmouseout="this.style.backgroundColor='#1656BB'">
+                        <i class="fa-solid fa-file-word text-sm"></i>
+                        Wordを読み込む
+                    </button>
+
+                    <!-- 2. フォントを読み込む Button (#2B7CD3) -->
+                    <input type="file" id="fontFileInput" accept=".ttf,.otf,.woff,.woff2" class="hidden">
+                    <button id="loadFontButton" class="w-full text-white py-3.5 px-3 rounded font-bold transition duration-200 shadow-sm text-xs flex items-center justify-center gap-2 min-h-[48px]" style="background-color: #2B7CD3;" onmouseover="this.style.backgroundColor='#3593f0'" onmouseout="this.style.backgroundColor='#2B7CD3'">
+                        <i class="fa-solid fa-font text-sm"></i>
+                        フォントを読み込む
+                    </button>
+                    <div id="fontStatus" class="text-[11px] text-gray-500 truncate -mt-1 px-0.5">
+                        標準フォント（Yuji Syuku）
+                    </div>
+
+                    <!-- 3. Name Input Label & Preset Button -->
+                    <div class="flex justify-between items-center mt-0.5">
+                        <label for="nameList" class="block text-xs font-bold text-gray-700">
+                            名前リスト入力欄
+                        </label>
+                        <button id="btnPresetSample" class="text-[11px] text-blue-600 hover:underline font-medium">
+                            サンプル名入力
+                        </button>
+                    </div>
+
+                    <!-- 4. Textarea stretching down -->
+                    <textarea id="nameList" class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-xs font-mono leading-relaxed resize-none flex-grow min-h-[110px]" placeholder="山田太ろう&#10;すず木花子&#10;さとう一ろう"></textarea>
+                </div>
+
+                <!-- Bottom Action Buttons -->
+                <div class="pt-2.5 border-t border-gray-100 mt-2 flex flex-col gap-2">
+                    <!-- 5. お手本を生成する Button (#ffa500) -->
+                    <button id="generateButton" class="w-full text-white py-3.5 px-3 rounded font-bold transition duration-200 shadow text-xs flex items-center justify-center gap-2 min-h-[48px]" style="background-color: #ffa500;" onmouseover="this.style.backgroundColor='#e69500'" onmouseout="this.style.backgroundColor='#ffa500'">
+                        <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                        お手本を生成する
+                    </button>
+
+                    <!-- 6. PDFをダウンロード Button (#fbcfe8 / #9d174d) -->
+                    <button id="savePdfButton" class="w-full bg-pink-200 text-pink-900 font-bold py-3.5 px-3 rounded hover:bg-pink-300 transition duration-200 shadow text-xs disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]" disabled>
+                        <i class="fa-solid fa-file-pdf text-sm"></i>
+                        PDFをダウンロード
+                    </button>
+                    
+                    <p class="text-[10px] text-gray-500 leading-tight px-1 mt-0.5">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600 mr-1"></i>
+                        印刷時はダイアログで<strong>「実際のサイズ (100%)」</strong>を選択してください（「ページに合わせる」は230mmになります）。
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Right Preview Panel (Wide 9 Cols on LG) -->
+            <div class="lg:col-span-9 flex flex-col h-full overflow-hidden">
+                <p class="text-center text-xs text-gray-600 mb-1 font-medium">プレビュー [切り取り点間隔: 240mm (固定)] (クリックで拡大/縮小)</p>
+
+                <!-- Dynamic Preview Container -->
+                <div id="previewArea" class="w-full scaled-down flex-grow overflow-y-auto" style="display: none;">
+                    <!-- Rendered A4 pages get inserted here -->
+                </div>
+
+                <!-- Empty Placeholder -->
+                <div id="previewPlaceholder" class="bg-white rounded-lg shadow-inner border border-gray-300 p-8 text-center flex flex-col items-center justify-center text-gray-400 flex-grow">
+                    <i class="fa-solid fa-file-lines text-5xl mb-3 text-gray-300"></i>
+                    <p class="text-xs font-bold text-gray-500">お手本が未生成です</p>
+                    <p class="text-[11px] text-gray-400 mt-1">左側のパネルに名前を入力し、「お手本を生成する」を押してください。</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JavaScript Application Logic -->
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const { jsPDF } = window.jspdf;
+            const mammoth = window.mammoth;
+
+            // Elements
+            const generateButton = document.getElementById('generateButton');
+            const savePdfButton = document.getElementById('savePdfButton');
+            const loadWordButton = document.getElementById('loadWordButton');
+            const wordFileInput = document.getElementById('wordFileInput');
+            const loadFontButton = document.getElementById('loadFontButton');
+            const fontFileInput = document.getElementById('fontFileInput');
+            const fontStatus = document.getElementById('fontStatus');
+            const customFontTag = document.getElementById('customFont');
+            const previewArea = document.getElementById('previewArea');
+            const previewPlaceholder = document.getElementById('previewPlaceholder');
+            const nameList = document.getElementById('nameList');
+            const loader = document.getElementById('loader');
+            const toastContainer = document.getElementById('toastContainer');
+            const btnPresetSample = document.getElementById('btnPresetSample');
+
+            let names = [];
+            let isZoomedIn = false;
+            let scaleOut = 1.0;
+
+            const A4_WIDTH_PX = 793.7;
+            const A4_HEIGHT_PX = 1122.5;
+
+            // Utilities
+            function showLoader() { loader.style.display = 'block'; }
+            function hideLoader() { loader.style.display = 'none'; }
+
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `pointer-events-auto p-3 rounded shadow text-xs font-medium flex items-center gap-2 border bg-white text-gray-800 transition duration-300 opacity-0 translate-y-1`;
+                
+                let iconClass = 'fa-circle-info text-blue-500';
+                if (type === 'success') iconClass = 'fa-circle-check text-emerald-500';
+                if (type === 'error') iconClass = 'fa-circle-xmark text-red-500';
+
+                toast.innerHTML = `<i class="fa-solid ${iconClass}"></i><span>${message}</span>`;
+                toastContainer.appendChild(toast);
+
+                requestAnimationFrame(() => {
+                    toast.classList.remove('opacity-0', 'translate-y-1');
+                });
+
+                setTimeout(() => {
+                    toast.classList.add('opacity-0');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            // Preset sample names
+            btnPresetSample.addEventListener('click', () => {
+                nameList.value = "山田太ろう\nすず木花子\nさとう一ろう";
+                showToast('サンプル名前リストを設定しました。', 'success');
+            });
+
+            // Zoom calculations
+            function calculateZoom() {
+                const previewContainerWidth = previewArea.clientWidth - 32;
+                const previewContainerHeight = previewArea.clientHeight - 32;
+
+                if (previewContainerWidth > 0 && previewContainerHeight > 0) {
+                    const scaleX = previewContainerWidth / A4_WIDTH_PX;
+                    const scaleY = previewContainerHeight / A4_HEIGHT_PX;
+                    scaleOut = Math.min(scaleX, scaleY, 1.0);
+                } else {
+                    scaleOut = 0.5;
+                }
+                
+                previewArea.style.setProperty('--scale-out', scaleOut);
+                applyZoom();
+            }
+
+            window.addEventListener('resize', () => {
+                if (names.length > 0 && !isZoomedIn) {
+                    calculateZoom();
+                }
+            });
+
+            function applyZoom() {
+                if (isZoomedIn) {
+                    previewArea.classList.remove('scaled-down');
+                    previewArea.classList.add('zoomed-in');
+                } else {
+                    previewArea.classList.add('scaled-down');
+                    previewArea.classList.remove('zoomed-in');
+                }
+            }
+
+            function toggleZoom() {
+                isZoomedIn = !isZoomedIn;
+                applyZoom();
+            }
+
+            previewArea.addEventListener('click', toggleZoom);
+
+            // Font Loader (.ttf, .otf, .woff, .woff2)
+            function loadFontFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                showLoader();
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        const fontDataUrl = e.target.result;
+                        const fontFaceRule = `
+                            @font-face {
+                                font-family: 'Ferutopen';
+                                src: url('${fontDataUrl}');
+                            }
+                        `;
+                        customFontTag.innerHTML = fontFaceRule;
+                        fontStatus.textContent = `「${file.name}」適用中`;
+                        fontStatus.className = 'text-[11px] text-emerald-700 font-bold truncate -mt-1 px-0.5';
+                        showToast(`フォント「${file.name}」を読込ました。`, 'success');
+
+                        if (names.length > 0) generatePreview();
+                    } catch (error) {
+                        console.error(error);
+                        showToast('フォント読込に失敗しました。', 'error');
+                    } finally {
+                        hideLoader();
+                        event.target.value = null;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // Word File Reader (.docx)
+            function loadWordFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                showLoader();
+                const reader = new FileReader();
+
+                reader.onload = async (e) => {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                        const cleanedText = result.value.replace(/(\r\n|\r|\n){2,}/g, '\n').trim();
+                        if (cleanedText) {
+                            nameList.value = cleanedText;
+                            showToast('Wordから名前を読み込みました。', 'success');
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        showToast('Wordファイルの読込に失敗しました。', 'error');
+                    } finally {
+                        hideLoader();
+                        event.target.value = null;
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            // Preview Generator Logic
+            function generatePreview() {
+                const inputText = nameList.value.trim();
+                if (!inputText) {
+                    showToast('名前リストを入力してください。', 'error');
+                    return;
+                }
+
+                names = inputText.split('\n').filter(name => name.trim() !== '');
+                if (names.length === 0) {
+                    showToast('有効な名前データがありません。', 'error');
+                    return;
+                }
+
+                showLoader();
+                previewPlaceholder.style.display = 'none';
+                previewArea.innerHTML = '';
+                previewArea.style.display = 'block';
+
+                for (let i = 0; i < names.length; i += 3) {
+                    const pageNames = names.slice(i, i + 3);
+                    const page = document.createElement('div');
+                    page.className = 'a4-page';
+
+                    // Top and Bottom Cut Guide Lines (Fixed 240.0mm)
+                    const lineTop = document.createElement('div');
+                    lineTop.className = 'cut-guide-line cut-guide-line-top';
+                    page.appendChild(lineTop);
+
+                    const lineBottom = document.createElement('div');
+                    lineBottom.className = 'cut-guide-line cut-guide-line-bottom';
+                    page.appendChild(lineBottom);
+
+                    pageNames.forEach((fullName, index) => {
+                        const tanzaku = document.createElement('div');
+                        tanzaku.className = 'tanzaku';
+
+                        // Red Dots (Top & Bottom Cut Marks)
+                        if (index > 0) {
+                            const dotTopLeft = document.createElement('div');
+                            dotTopLeft.className = 'kiritori-dot dot-top dot-left';
+                            dotTopLeft.textContent = '・';
+                            tanzaku.appendChild(dotTopLeft);
+
+                            const dotBottomLeft = document.createElement('div');
+                            dotBottomLeft.className = 'kiritori-dot dot-bottom dot-left';
+                            dotBottomLeft.textContent = '・';
+                            tanzaku.appendChild(dotBottomLeft);
+                        }
+
+                        // Name Container
+                        const nameContainer = document.createElement('div');
+
+                        // Always Visible Blue Center Guide Line
+                        const line = document.createElement('div');
+                        line.className = 'center-line';
+                        nameContainer.appendChild(line);
+
+                        const parts = fullName.trim().split(/[\s　]+/);
+                        const lastName = parts[0] || '';
+                        const firstName = parts.slice(1).join('') || '';
+                        const hasSpace = (lastName && firstName);
+
+                        const totalElements = lastName.length + (hasSpace ? 1 : 0) + firstName.length;
+
+                        let fontSizePt = 90;
+
+                        if (totalElements <= 7) {
+                            nameContainer.className = 'name-container contained-240mm';
+                            const targetHeightPx = 907.09; // 240mm
+                            const minGapPx = 12;
+                            const maxAvailableCharHeightPx = (targetHeightPx - (totalElements - 1) * minGapPx) / totalElements;
+                            const maxPt = Math.floor(maxAvailableCharHeightPx / 1.3333);
+                            
+                            if (maxPt < 90) {
+                                fontSizePt = Math.max(50, maxPt);
+                            }
+                        } else {
+                            nameContainer.className = 'name-container centered-280mm';
+                            const targetHeightPx = 1058.27; // 280mm
+                            const minGapPx = 8;
+                            const maxAvailableCharHeightPx = (targetHeightPx - (totalElements - 1) * minGapPx) / totalElements;
+                            const maxPt = Math.floor(maxAvailableCharHeightPx / 1.3333);
+                            if (maxPt < 90) {
+                                fontSizePt = Math.max(45, maxPt);
+                            }
+                        }
+
+                        // Append Last Name
+                        lastName.split('').forEach(char => {
+                            const span = document.createElement('span');
+                            span.className = 'name-span';
+                            span.style.fontSize = `${fontSizePt}pt`;
+                            span.style.height = `${fontSizePt}pt`;
+                            span.textContent = char;
+                            nameContainer.appendChild(span);
+                        });
+
+                        // Append Space
+                        if (hasSpace) {
+                            const space = document.createElement('span');
+                            space.className = 'name-span name-space';
+                            space.style.fontSize = `${fontSizePt}pt`;
+                            space.style.height = `${fontSizePt}pt`;
+                            space.style.width = `${fontSizePt}pt`;
+                            space.textContent = '　';
+                            nameContainer.appendChild(space);
+                        }
+
+                        // Append First Name
+                        firstName.split('').forEach(char => {
+                            const span = document.createElement('span');
+                            span.className = 'name-span';
+                            span.style.fontSize = `${fontSizePt}pt`;
+                            span.style.height = `${fontSizePt}pt`;
+                            span.textContent = char;
+                            nameContainer.appendChild(span);
+                        });
+
+                        tanzaku.appendChild(nameContainer);
+                        page.appendChild(tanzaku);
+                    });
+
+                    // Pad empty strips if less than 3
+                    while (page.children.length < 3 + 2) {
+                        const emptyTanzaku = document.createElement('div');
+                        emptyTanzaku.className = 'tanzaku';
+                        emptyTanzaku.style.visibility = 'hidden';
+                        page.appendChild(emptyTanzaku);
+                    }
+
+                    previewArea.appendChild(page);
+                }
+
+                calculateZoom();
+                savePdfButton.disabled = false;
+                setTimeout(hideLoader, 200);
+            }
+
+            // Save PDF Logic
+            async function savePdf() {
+                if (names.length === 0) return;
+
+                showLoader();
+                await document.fonts.ready;
+
+                const pages = previewArea.querySelectorAll('.a4-page');
+                if (pages.length === 0) {
+                    hideLoader();
+                    return;
+                }
+
+                const currentZoom = isZoomedIn;
+                previewArea.classList.remove('scaled-down', 'zoomed-in');
+
+                pages.forEach(page => {
+                    page.style.transition = 'none';
+                    page.style.transform = 'scale(1.0)';
+                    page.style.marginBottom = '20px';
+                });
+
+                // PDF出力時のみ、html2canvasによる縦描きレンダリングのズレ（10mm下沈み）を解消するため一時的に10mm上へ引き上げる
+                const nameContainers = previewArea.querySelectorAll('.name-container');
+                nameContainers.forEach(container => {
+                    container.style.transform = 'translateY(calc(-15px + 3.5mm - 10mm))';
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const options = {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    letterRendering: true,
+                    backgroundColor: '#ffffff'
+                };
+
+                try {
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    
+                    for (let i = 0; i < pages.length; i++) {
+                        const canvas = await html2canvas(pages[i], options);
+                        if (i > 0) pdf.addPage();
+                        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+                    }
+
+                    pdf.save('kakizome_otehon_240mm.pdf');
+                    showToast('PDFをダウンロードしました。', 'success');
+                } catch (error) {
+                    console.error(error);
+                    showToast('PDF保存中にエラーが発生しました。', 'error');
+                } finally {
+                    // PDF生成完了後、即座に画面プレビュー用の位置（-15px + 3.5mm）に復元
+                    nameContainers.forEach(container => {
+                        container.style.transform = '';
+                    });
+                    pages.forEach(page => page.style.transition = 'transform 0.2s ease');
+                    applyZoom();
+                    hideLoader();
+                }
+            }
+
+            // Event Listeners
+            loadFontButton.addEventListener('click', () => fontFileInput.click());
+            fontFileInput.addEventListener('change', loadFontFile);
+
+            loadWordButton.addEventListener('click', () => wordFileInput.click());
+            wordFileInput.addEventListener('change', loadWordFile);
+
+            generateButton.addEventListener('click', generatePreview);
+            savePdfButton.addEventListener('click', savePdf);
+        });
+    </script>
+</body>
+</html>
