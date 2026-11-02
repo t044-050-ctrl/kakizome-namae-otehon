@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>書き初め名前お手本アプリ</title>
-    <meta property="og:title" content="書き初め名前お手本アプリ">
-    <meta property="og:description" content="【１･２年書き初め】フェルトペンの名前のお手本を作成するアプリです。">
-    <meta property="og:type" content="website">
 
     <!-- Google Fonts: Yuji Syuku & Noto Serif JP -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -708,6 +705,16 @@
                     container.style.transform = 'translateY(calc(-15px + 3.5mm - 10mm))';
                 });
 
+                // 長音符「ー」がPDF出力で横向きになる現象を防止するため、一時的に縦棒漢字「丨」(U+4E28) に置換
+                const nameSpans = previewArea.querySelectorAll('.name-span');
+                const originalTexts = [];
+                nameSpans.forEach(span => {
+                    originalTexts.push(span.textContent);
+                    if (span.textContent === 'ー' || span.textContent === '―' || span.textContent === '-') {
+                        span.textContent = '丨';
+                    }
+                });
+
                 await new Promise(resolve => setTimeout(resolve, 100));
 
                 const options = {
@@ -733,6 +740,10 @@
                     console.error(error);
                     showToast('PDF保存中にエラーが発生しました。', 'error');
                 } finally {
+                    // 長音符「ー」を元の文字に復元
+                    nameSpans.forEach((span, idx) => {
+                        span.textContent = originalTexts[idx];
+                    });
                     // PDF生成完了後、即座に画面プレビュー用の位置（-15px + 3.5mm）に復元
                     nameContainers.forEach(container => {
                         container.style.transform = '';
